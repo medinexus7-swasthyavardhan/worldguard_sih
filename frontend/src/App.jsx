@@ -51,68 +51,9 @@ function AnimatedSection({ children, className = '', delay = 0 }) {
 }
 
 /* ──────────────────────────────────────────────
-   AUTH MODAL
-   ────────────────────────────────────────────── */
-function AuthModal({ isOpen, onClose, onLogin, user }) {
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
-
-  if (!isOpen) return null;
-
-  return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-md">
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-white border border-slate-200 rounded-3xl p-8 max-w-md w-full shadow-2xl relative">
-          <button onClick={onClose} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600">
-            <X className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-3 mb-6">
-            <ShieldCheck className="w-8 h-8 text-red-500" />
-            <div>
-              <h3 className="text-xl font-bold text-[#0f172a]">SDS Kavach Auth</h3>
-              <p className="text-xs text-slate-500">Security Team Authentication</p>
-            </div>
-          </div>
-
-          {user ? (
-            <div className="text-center py-4">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center text-red-600 font-bold text-xl mx-auto mb-3">
-                {user.name[0]}
-              </div>
-              <p className="font-bold text-slate-800">{user.name}</p>
-              <p className="text-sm text-slate-500 mb-6">{user.email}</p>
-              <button onClick={() => { onLogin(null); onClose(); }} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-bold transition-colors">
-                Sign Out
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={(e) => { e.preventDefault(); onLogin({ name: name || 'Security Lead', email: email || 'admin@sdskavach.gov.in' }); onClose(); }} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Full Name</label>
-                <input type="text" placeholder="e.g. Durga CSE (Security Lead)" value={name} onChange={e => setName(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-slate-800 focus:outline-none focus:border-red-500" />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Email Address</label>
-                <input type="email" placeholder="admin@sdskavach.gov.in" value={email} onChange={e => setEmail(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-slate-800 focus:outline-none focus:border-red-500" />
-              </div>
-              <button type="submit" className="w-full bg-red-500 hover:bg-red-600 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-red-500/20 transition-all">
-                Sign In to SDS Kavach
-              </button>
-            </form>
-          )}
-        </motion.div>
-      </div>
-    </AnimatePresence>
-  );
-}
-
-/* ──────────────────────────────────────────────
    NAVBAR
    ────────────────────────────────────────────── */
-function Navbar({ onOpenAuth, user }) {
+function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   useEffect(() => {
@@ -130,27 +71,25 @@ function Navbar({ onOpenAuth, user }) {
 
   return (
     <motion.header initial={{ y: -40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-      className={`fixed top-5 left-1/2 -translate-x-1/2 z-50 w-[94%] max-w-[1100px] transition-all duration-700 ${scrolled ? 'bg-white/95 shadow-2xl shadow-black/8' : 'bg-white/70 shadow-xl shadow-black/4'} backdrop-blur-2xl border border-white/50 rounded-full px-6 md:px-8 py-3`}>
+      className={`fixed top-5 left-1/2 -translate-x-1/2 z-50 w-[94%] max-w-[1100px] transition-all duration-700 ${scrolled ? 'bg-white/95 shadow-2xl shadow-black/8' : 'bg-white/70 shadow-xl shadow-black/4'} backdrop-blur-2xl border border-white/50 rounded-full px-6 md:px-8 py-3.5`}>
       <div className="flex items-center justify-between">
-        <nav className="hidden md:flex items-center gap-5 w-1/3">
+        {/* Left: Logo + Name */}
+        <Link to="/" className="flex items-center gap-2.5 shrink-0">
+          <ShieldCheck className="w-7 h-7 text-[#0f172a]" strokeWidth={2.5} />
+          <span className="font-black text-[21px] tracking-tight text-[#0f172a] leading-none select-none">sds<span className="text-red-500">kavach</span></span>
+        </Link>
+
+        {/* Center: Menu Aligned at Center */}
+        <nav className="hidden md:flex items-center gap-8 justify-center flex-1">
           {navLinks.map(l => (
-            <Link key={l.to} to={l.to} className={`text-[13px] font-semibold transition-colors duration-300 ${location.pathname === l.to ? 'text-red-500' : 'text-slate-600 hover:text-red-500'}`}>
+            <Link key={l.to} to={l.to} className={`text-[14px] font-semibold transition-colors duration-300 ${location.pathname === l.to ? 'text-red-500 font-bold' : 'text-slate-600 hover:text-red-500'}`}>
               {l.label}
             </Link>
           ))}
         </nav>
-        <Link to="/" className="flex items-center justify-center gap-2 md:w-1/3">
-          <ShieldCheck className="w-7 h-7 text-[#0f172a]" strokeWidth={2.5} />
-          <span className="font-black text-[21px] tracking-tight text-[#0f172a] leading-none select-none">sds<span className="text-red-500">kavach</span></span>
-        </Link>
-        <div className="hidden md:flex items-center justify-end gap-3 w-1/3">
-          <button onClick={onOpenAuth} className="text-[13px] font-bold text-slate-700 hover:text-red-500 transition-colors flex items-center gap-1.5">
-            <User className="w-4 h-4 text-red-500" />
-            {user ? user.name.split(' ')[0] : 'Sign In'}
-          </button>
-          <Link to="/report" className="text-[13px] font-bold text-red-500 hover:text-red-600 transition-colors">PDF Report</Link>
-          <Link to="/" className="bg-red-500 hover:bg-red-600 text-white text-[13px] font-bold px-5 py-2 rounded-full shadow-lg shadow-red-500/20 transition-all active:scale-95">Start Scan</Link>
-        </div>
+
+        {/* Right Spacer for Perfect Centering */}
+        <div className="w-[140px] hidden md:block" />
       </div>
     </motion.header>
   );
@@ -594,17 +533,13 @@ function Footer() {
    APP
    ────────────────────────────────────────────── */
 function AppLayout() {
-  const [authOpen, setAuthOpen] = useState(false);
-  const [user, setUser] = useState(null);
-
   return (
     <div className="min-h-screen font-sans selection:bg-red-500/30 relative scroll-smooth"
       style={{
         backgroundImage: `radial-gradient(ellipse 130% 80% at 50% -10%, rgba(219,234,254,0.5) 0%, transparent 55%), radial-gradient(ellipse 80% 60% at 85% 15%, rgba(252,231,243,0.45) 0%, transparent 50%), radial-gradient(ellipse 70% 50% at 15% 85%, rgba(224,231,255,0.35) 0%, transparent 50%), linear-gradient(180deg, #fafbff 0%, #f1f5f9 35%, #ede5f3 65%, #e8ddf0 85%, #f1f5f9 100%)`,
         backgroundAttachment: 'fixed',
       }}>
-      <Navbar onOpenAuth={() => setAuthOpen(true)} user={user} />
-      <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} onLogin={setUser} user={user} />
+      <Navbar />
       <Routes>
         <Route path="/" element={<><ScannerPage /><FeaturesSection /></>} />
         <Route path="/audit" element={<CredentialAuditPage />} />
