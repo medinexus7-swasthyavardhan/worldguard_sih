@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+/* Base styles for the dark theme */
+body {
+  background-color: #020617;
+  color: #e2e8f0;
+}
