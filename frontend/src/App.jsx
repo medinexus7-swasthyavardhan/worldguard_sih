@@ -4,7 +4,7 @@ import { motion, AnimatePresence, useScroll, useTransform, useInView } from 'fra
 import {
   ShieldCheck, ArrowRight, Zap, FileText, Download, Key, Bot, Send,
   CheckCircle2, Lock, Globe, Code2, AlertTriangle, Eye, Shield,
-  ScanLine, Bug, Menu, X, User, LogIn
+  ScanLine, Bug, Menu, X, User, LogIn, Sparkles
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
