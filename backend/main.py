@@ -46,12 +46,16 @@ async def real_scan(url: str):
     findings = []
     finding_id = 0
 
-    if not url.startswith("http"):
-        url = "https://" + url
+    # Auto-format raw domain input (e.g. 'edusut' -> 'https://edusut.com')
+    clean_url = url.strip()
+    if not clean_url.startswith("http://") and not clean_url.startswith("https://"):
+        if "." not in clean_url:
+            clean_url = clean_url + ".com"
+        clean_url = "https://" + clean_url
 
     try:
-        async with httpx.AsyncClient(timeout=15, follow_redirects=True, verify=False) as client:
-            resp = await client.get(url)
+        async with httpx.AsyncClient(timeout=12, follow_redirects=True, verify=False) as client:
+            resp = await client.get(clean_url)
             headers = resp.headers
 
             security_headers = {
@@ -133,7 +137,7 @@ async def real_scan(url: str):
 
             for path, title in sensitive_paths:
                 try:
-                    check = await client.get(url.rstrip("/") + path)
+                    check = await client.get(clean_url.rstrip("/") + path)
                     if check.status_code == 200 and len(check.content) > 50:
                         finding_id += 1
                         findings.append({
@@ -148,9 +152,16 @@ async def real_scan(url: str):
                     pass
 
     except Exception as e:
-        findings.append({"id": 1, "title": "Scan Notice", "severity": "Medium", "component": url, "signal": str(e)[:100], "status": "Notice"})
+        findings.append({
+            "id": 1,
+            "title": "Host Unreachable / DNS Lookup Failed",
+            "severity": "Critical",
+            "component": clean_url,
+            "signal": f"Could not resolve or connect to server: {str(e)[:90]}",
+            "status": "Failed"
+        })
 
-    return findings
+    return clean_url, findings
 
 # ────────────────────────────────────
 #  ROUTES
@@ -162,18 +173,23 @@ def root():
 
 @app.post("/api/scan")
 async def start_scan(req: ScanRequest):
-    url = req.target_url if req.target_url.startswith("http") else "https://" + req.target_url
-    findings = await real_scan(url)
-    score = max(0, 100 - sum(
-        25 if f["severity"] == "Critical" else
-        15 if f["severity"] == "High" else
-        8 if f["severity"] == "Medium" else 3
-        for f in findings
-    ))
-    data = {"target_url": url, "findings": findings, "timestamp": datetime.utcnow().isoformat(), "score": score}
-    scan_store[url] = data
+    clean_url, findings = await real_scan(req.target_url)
+    
+    # If connection failed or DNS lookup failed, score is 0
+    if any(f.get("status") == "Failed" or f["severity"] == "Critical" and "DNS" in f["title"] for f in findings):
+        score = 0
+    else:
+        score = max(0, 100 - sum(
+            25 if f["severity"] == "Critical" else
+            15 if f["severity"] == "High" else
+            8 if f["severity"] == "Medium" else 3
+            for f in findings
+        ))
+
+    data = {"target_url": clean_url, "findings": findings, "timestamp": datetime.utcnow().isoformat(), "score": score}
+    scan_store[clean_url] = data
     scan_store["_latest"] = data
-    return {"target_url": url, "findings": findings, "score": score}
+    return {"target_url": clean_url, "findings": findings, "score": score}
 
 @app.get("/api/findings")
 def get_findings(target_url: Optional[str] = Query(None)):
