@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import {
   ShieldCheck, ArrowRight, FileText, Download, Key, Bot, Send,
-  AlertTriangle, Copy, Check, ChevronDown, Activity, Sparkles, Lock, Shield, Eye
+  AlertTriangle, Copy, Check, ChevronDown, Activity, Sparkles, Lock, Shield, Eye, Code2, Zap
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
