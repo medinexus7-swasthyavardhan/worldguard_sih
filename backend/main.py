@@ -21,7 +21,7 @@ app.add_middleware(
 )
 
 # ────────────────────────────────────
-#  In-memory store for scan results
+#  In-memory store for scan results (keyed by normalized target URL)
 # ────────────────────────────────────
 scan_store = {}
 
@@ -188,28 +188,40 @@ def root():
 
 @app.post("/api/scan")
 async def start_scan(req: ScanRequest):
-    """Run a real security scan against the target URL."""
-    findings = await real_scan(req.target_url)
-    scan_id = hashlib.md5(req.target_url.encode()).hexdigest()[:8]
-    scan_store[scan_id] = {
-        "target_url": req.target_url,
+    """Run a real security scan against the target URL and save to store."""
+    url = req.target_url if req.target_url.startswith("http") else "https://" + req.target_url
+    findings = await real_scan(url)
+    score = max(0, 100 - sum(
+        25 if f["severity"] == "Critical" else
+        15 if f["severity"] == "High" else
+        8 if f["severity"] == "Medium" else 3
+        for f in findings
+    ))
+    
+    data = {
+        "target_url": url,
         "findings": findings,
         "timestamp": datetime.utcnow().isoformat(),
-        "score": max(0, 100 - sum(
-            25 if f["severity"] == "Critical" else
-            15 if f["severity"] == "High" else
-            8 if f["severity"] == "Medium" else 3
-            for f in findings
-        ))
+        "score": score
     }
-    return {"scan_id": scan_id, "findings": findings, "score": scan_store[scan_id]["score"]}
+    
+    # Store by exact normalized URL AND as latest
+    scan_store[url] = data
+    scan_store["_latest"] = data
+    
+    return {"target_url": url, "findings": findings, "score": score}
 
 @app.get("/api/findings")
-def get_findings():
-    """Return most recent scan findings or demo data."""
-    if scan_store:
-        latest = list(scan_store.values())[-1]
-        return latest["findings"]
+def get_findings(target_url: Optional[str] = Query(None)):
+    """Return findings for a specific target URL or the most recent scan."""
+    if target_url:
+        url = target_url if target_url.startswith("http") else "https://" + target_url
+        if url in scan_store:
+            return scan_store[url]["findings"]
+    
+    if "_latest" in scan_store:
+        return scan_store["_latest"]["findings"]
+
     return [
         {"id": 1, "title": "Broken Access Control", "severity": "High", "component": "/api/test-resource/{id}", "status": "Validated", "signal": "HTTP 200 on restricted route"},
         {"id": 2, "title": "Missing Security Headers", "severity": "Low", "component": "Global", "status": "Validated", "signal": "Multiple headers absent"},
@@ -235,31 +247,83 @@ async def credential_audit(req: CredentialAuditRequest):
 
 @app.post("/api/ai-chat")
 async def ai_chat(req: AIChatRequest):
-    """AI Security Analyst — rule-based responses for common security questions."""
-    msg = req.message.lower()
+    """AI Security Analyst — Powered by Google Gemini API if key is present, fallback to OWASP Rule Engine."""
+    gemini_key = os.environ.get("GEMINI_API_KEY")
+    
+    if gemini_key:
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
+                prompt = (
+                    "You are the SDS Kavach AI Security Analyst. Provide clear, professional cybersecurity advice "
+                    "with code examples and remediation steps based on OWASP standards.\n\n"
+                    f"User Question: {req.message}"
+                )
+                payload = {"contents": [{"parts": [{"text": prompt}]}]}
+                resp = await client.post(url, json=payload)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    ai_text = data["candidates"][0]["content"]["parts"][0]["text"]
+                    return {"response": ai_text}
+        except Exception as e:
+            pass  # Fallback to rule engine if Gemini API call fails
 
+    msg = req.message.lower()
     responses = {
         "sql injection": "**SQL Injection Remediation:**\n\n1. Use parameterized queries / prepared statements\n2. Use an ORM (SQLAlchemy, Prisma)\n3. Validate and sanitize all user inputs\n4. Apply principle of least privilege to DB accounts\n\n```python\n# BAD\ncursor.execute(f\"SELECT * FROM users WHERE id = {user_input}\")\n\n# GOOD\ncursor.execute(\"SELECT * FROM users WHERE id = %s\", (user_input,))\n```",
         "xss": "**XSS Remediation:**\n\n1. Escape all user output in HTML context\n2. Use Content-Security-Policy header\n3. Set `HttpOnly` flag on cookies\n4. Use frameworks that auto-escape (React, Vue)\n\n```javascript\n// BAD\nelement.innerHTML = userInput;\n\n// GOOD\nelement.textContent = userInput;\n```",
-        "access control": "**Broken Access Control Fix:**\n\n1. Implement server-side authorization checks on every endpoint\n2. Use role-based access control (RBAC)\n3. Deny by default — only allow explicitly permitted actions\n4. Log and monitor all access control failures\n\n```python\n@app.get(\"/api/resource/{id}\")\ndef get_resource(id: int, user = Depends(get_current_user)):\n    resource = db.get(id)\n    if resource.owner_id != user.id:\n        raise HTTPException(403, \"Forbidden\")\n    return resource\n```",
+        "access control": "**Broken Access Control Fix:**\n\n1. Implement server-side authorization checks on every endpoint\n2. Use role-based access control (RBAC)\n3. Deny by default — only allow explicitly permitted actions\n\n```python\n@app.get(\"/api/resource/{id}\")\ndef get_resource(id: int, user = Depends(get_current_user)):\n    resource = db.get(id)\n    if resource.owner_id != user.id:\n        raise HTTPException(403, \"Forbidden\")\n    return resource\n```",
         "header": "**Missing Security Headers Fix:**\n\nAdd these headers to your server configuration:\n\n```\nX-Frame-Options: DENY\nX-Content-Type-Options: nosniff\nStrict-Transport-Security: max-age=31536000; includeSubDomains\nContent-Security-Policy: default-src 'self'\nReferrer-Policy: strict-origin-when-cross-origin\nPermissions-Policy: camera=(), microphone=(), geolocation=()\n```",
-        "hsts": "**HSTS Implementation:**\n\nAdd `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload` to all HTTPS responses. This forces browsers to only use HTTPS for your domain.",
-        "cookie": "**Cookie Security Fix:**\n\nSet these flags on all cookies:\n```\nSet-Cookie: session=abc123; Secure; HttpOnly; SameSite=Strict; Path=/\n```\n- `Secure` — only sent over HTTPS\n- `HttpOnly` — not accessible via JavaScript\n- `SameSite=Strict` — prevents CSRF",
+        "hsts": "**HSTS Implementation:**\n\nAdd `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload` to all HTTPS responses.",
+        "cookie": "**Cookie Security Fix:**\n\nSet these flags on all cookies:\n```\nSet-Cookie: session=abc123; Secure; HttpOnly; SameSite=Strict; Path=/\n```",
     }
 
     for keyword, response in responses.items():
         if keyword in msg:
             return {"response": response}
 
-    return {"response": f"I understand you're asking about: *\"{req.message}\"*\n\nBased on the OWASP Top 10 framework, I recommend:\n\n1. **Validate all inputs** on the server side\n2. **Apply least privilege** to all services and users\n3. **Enable security headers** (CSP, HSTS, X-Frame-Options)\n4. **Monitor and log** all security-critical events\n5. **Keep dependencies updated** and scan for known CVEs\n\nWould you like me to generate specific remediation code for a particular vulnerability?"}
-
+    return {"response": f"I understand you're asking about: *\"{req.message}\"*\n\nBased on the OWASP Top 10 framework:\n\n1. **Validate all inputs** on server side\n2. **Apply least privilege** to services\n3. **Enable security headers** (CSP, HSTS, X-Frame-Options)\n4. **Monitor and log** security events\n\nAsk me about SQL Injection, XSS, Headers, or Cookies for specific code fixes!"}
 
 @app.get("/api/report/download")
-def download_report():
-    """Generate PDF report from latest scan results."""
+async def download_report(target_url: Optional[str] = Query(None)):
+    """Generate PDF report for a SPECIFIC target URL or the latest scan."""
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.colors import HexColor
+
+    url_to_report = None
+    if target_url:
+        url_to_report = target_url if target_url.startswith("http") else "https://" + target_url
+
+    # Retrieve scan data for this URL if available, otherwise latest, otherwise do on-the-fly scan
+    if url_to_report and url_to_report in scan_store:
+        scan_data = scan_store[url_to_report]
+    elif url_to_report:
+        # Perform real scan on the fly for the requested URL
+        findings = await real_scan(url_to_report)
+        score = max(0, 100 - sum(
+            25 if f["severity"] == "Critical" else
+            15 if f["severity"] == "High" else
+            8 if f["severity"] == "Medium" else 3
+            for f in findings
+        ))
+        scan_data = {"target_url": url_to_report, "findings": findings, "score": score}
+        scan_store[url_to_report] = scan_data
+    elif "_latest" in scan_store:
+        scan_data = scan_store["_latest"]
+    else:
+        scan_data = {
+            "target_url": "https://cybercrime.gov.in/",
+            "score": 75,
+            "findings": [
+                {"id": 1, "title": "Missing Security Headers", "severity": "Low", "component": "Global Headers", "signal": "Clickjacking & MIME headers missing"},
+                {"id": 2, "title": "Cookie Missing Secure Flag", "severity": "Medium", "component": "Set-Cookie Header", "signal": "Cookie transmitted over HTTP"},
+            ]
+        }
+
+    target = scan_data["target_url"]
+    score = scan_data["score"]
+    findings = scan_data["findings"]
 
     file_path = "security_report.pdf"
     c = canvas.Canvas(file_path, pagesize=A4)
@@ -274,24 +338,8 @@ def download_report():
     c.drawString(50, height - 80, "Secure Defense System — Security Assessment Report")
     c.drawString(50, height - 95, f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
 
-    # Line
     c.setStrokeColor(HexColor("#e2e8f0"))
     c.line(50, height - 110, width - 50, height - 110)
-
-    # Get findings
-    if scan_store:
-        latest = list(scan_store.values())[-1]
-        findings = latest["findings"]
-        target = latest["target_url"]
-        score = latest["score"]
-    else:
-        findings = [
-            {"id": 1, "title": "Broken Access Control", "severity": "High", "component": "/api/test-resource", "signal": "HTTP 200 on restricted route"},
-            {"id": 2, "title": "SQL Injection", "severity": "Critical", "component": "/login", "signal": "Syntax error on payload"},
-            {"id": 3, "title": "Missing X-Frame-Options", "severity": "Low", "component": "Global", "signal": "Header absent"},
-        ]
-        target = "https://cybercrime.gov.in/"
-        score = 55
 
     # Target Info
     y = height - 140
@@ -345,7 +393,6 @@ def download_report():
         c.drawString(60, y, f"Signal: {f.get('signal', 'N/A')}")
         y -= 22
 
-    # Footer
     c.setFont("Helvetica", 8)
     c.setFillColor(HexColor("#94a3b8"))
     c.drawString(50, 30, "SDS Kavach — Authorized Application Security Assessment & Vulnerability Validation Framework")

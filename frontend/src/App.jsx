@@ -4,7 +4,7 @@ import { motion, AnimatePresence, useScroll, useTransform, useInView } from 'fra
 import {
   ShieldCheck, ArrowRight, Zap, FileText, Download, Key, Bot, Send,
   CheckCircle2, Lock, Globe, Code2, AlertTriangle, Eye, Shield,
-  ScanLine, Bug, Menu, X
+  ScanLine, Bug, Menu, X, User, LogIn
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -51,9 +51,68 @@ function AnimatedSection({ children, className = '', delay = 0 }) {
 }
 
 /* ──────────────────────────────────────────────
+   AUTH MODAL
+   ────────────────────────────────────────────── */
+function AuthModal({ isOpen, onClose, onLogin, user }) {
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-md">
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+          className="bg-white border border-slate-200 rounded-3xl p-8 max-w-md w-full shadow-2xl relative">
+          <button onClick={onClose} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600">
+            <X className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-3 mb-6">
+            <ShieldCheck className="w-8 h-8 text-red-500" />
+            <div>
+              <h3 className="text-xl font-bold text-[#0f172a]">SDS Kavach Auth</h3>
+              <p className="text-xs text-slate-500">Security Team Authentication</p>
+            </div>
+          </div>
+
+          {user ? (
+            <div className="text-center py-4">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center text-red-600 font-bold text-xl mx-auto mb-3">
+                {user.name[0]}
+              </div>
+              <p className="font-bold text-slate-800">{user.name}</p>
+              <p className="text-sm text-slate-500 mb-6">{user.email}</p>
+              <button onClick={() => { onLogin(null); onClose(); }} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-bold transition-colors">
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={(e) => { e.preventDefault(); onLogin({ name: name || 'Security Lead', email: email || 'admin@sdskavach.gov.in' }); onClose(); }} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Full Name</label>
+                <input type="text" placeholder="e.g. Durga CSE (Security Lead)" value={name} onChange={e => setName(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-slate-800 focus:outline-none focus:border-red-500" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Email Address</label>
+                <input type="email" placeholder="admin@sdskavach.gov.in" value={email} onChange={e => setEmail(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-slate-800 focus:outline-none focus:border-red-500" />
+              </div>
+              <button type="submit" className="w-full bg-red-500 hover:bg-red-600 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-red-500/20 transition-all">
+                Sign In to SDS Kavach
+              </button>
+            </form>
+          )}
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+}
+
+/* ──────────────────────────────────────────────
    NAVBAR
    ────────────────────────────────────────────── */
-function Navbar() {
+function Navbar({ onOpenAuth, user }) {
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   useEffect(() => {
@@ -85,7 +144,11 @@ function Navbar() {
           <span className="font-black text-[21px] tracking-tight text-[#0f172a] leading-none select-none">sds<span className="text-red-500">kavach</span></span>
         </Link>
         <div className="hidden md:flex items-center justify-end gap-3 w-1/3">
-          <Link to="/report" className="text-[13px] font-bold text-red-500 hover:text-red-600 transition-colors">Generate PDF</Link>
+          <button onClick={onOpenAuth} className="text-[13px] font-bold text-slate-700 hover:text-red-500 transition-colors flex items-center gap-1.5">
+            <User className="w-4 h-4 text-red-500" />
+            {user ? user.name.split(' ')[0] : 'Sign In'}
+          </button>
+          <Link to="/report" className="text-[13px] font-bold text-red-500 hover:text-red-600 transition-colors">PDF Report</Link>
           <Link to="/" className="bg-red-500 hover:bg-red-600 text-white text-[13px] font-bold px-5 py-2 rounded-full shadow-lg shadow-red-500/20 transition-all active:scale-95">Start Scan</Link>
         </div>
       </div>
@@ -127,6 +190,7 @@ function ScannerPage() {
         const data = await resp.json();
         setFindings(data.findings);
         setScore(data.score);
+        localStorage.setItem('sdskavach_last_url', data.target_url);
       } else {
         setError('Scan failed. Check if the backend is running.');
       }
@@ -134,6 +198,11 @@ function ScannerPage() {
       setError('Cannot connect to SDS Kavach API. Make sure the backend is deployed.');
     }
     setIsScanning(false);
+  };
+
+  const handleDownloadPDF = () => {
+    const urlToUse = targetUrl || localStorage.getItem('sdskavach_last_url') || '';
+    window.location.href = `${API_URL}/api/report/download?target_url=${encodeURIComponent(urlToUse)}`;
   };
 
   return (
@@ -194,11 +263,15 @@ function ScannerPage() {
                 {score}
               </motion.div>
               <p className="text-slate-400 text-xs mt-5 font-medium">{findings.length} vulnerabilities found</p>
+              
+              <button onClick={handleDownloadPDF} className="mt-6 text-xs font-bold text-red-500 hover:text-red-600 flex items-center gap-1.5 border border-red-200 bg-red-50 px-4 py-2 rounded-full">
+                <Download className="w-3.5 h-3.5" /> Download Report PDF
+              </button>
             </div>
             <div className="md:col-span-2 bg-white/80 backdrop-blur-2xl border border-white/50 shadow-2xl rounded-3xl overflow-hidden">
-              <div className="p-5 border-b border-slate-100 bg-white/40">
+              <div className="p-5 border-b border-slate-100 bg-white/40 flex justify-between items-center">
                 <h3 className="text-slate-800 font-bold text-sm tracking-wider uppercase flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-red-500" /> Real Scan Results
+                  <AlertTriangle className="w-4 h-4 text-red-500" /> Real Scan Results: <span className="text-red-500 font-mono">{targetUrl}</span>
                 </h3>
               </div>
               <div className="divide-y divide-slate-100/80 max-h-[400px] overflow-y-auto">
@@ -239,7 +312,6 @@ function CredentialAuditPage() {
     if (!password) return;
     setLoading(true); setResult(null);
 
-    // SHA-1 hash in browser (k-anonymity: only send first 5 chars)
     const encoder = new TextEncoder();
     const data = encoder.encode(password);
     const hashBuffer = await crypto.subtle.digest('SHA-1', data);
@@ -359,7 +431,6 @@ function AIAnalystPage() {
         </div>
 
         <div className="bg-white/80 backdrop-blur-2xl border border-white/50 shadow-2xl rounded-3xl overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 320px)', minHeight: '500px' }}>
-          {/* Chat Messages */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {messages.map((msg, i) => (
               <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
@@ -388,7 +459,6 @@ function AIAnalystPage() {
             <div ref={chatEndRef} />
           </div>
 
-          {/* Input */}
           <div className="p-4 border-t border-slate-100 bg-white/60">
             <div className="flex gap-3">
               <input type="text" placeholder="Ask about SQL Injection, XSS, Headers, Cookies..." value={input}
@@ -407,36 +477,39 @@ function AIAnalystPage() {
 }
 
 /* ──────────────────────────────────────────────
-   REPORT PAGE (REAL - downloads from backend)
+   REPORT PAGE (REAL - downloads from backend for target_url)
    ────────────────────────────────────────────── */
 function ReportPage() {
+  const [reportUrl, setReportUrl] = useState(() => localStorage.getItem('sdskavach_last_url') || 'https://cybercrime.gov.in/');
   const [downloading, setDownloading] = useState(false);
-  const handleDownload = async () => {
+
+  const handleDownload = () => {
     setDownloading(true);
-    try {
-      const res = await fetch(`${API_URL}/api/report/download`);
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = 'SDSKavach_Security_Report.pdf'; a.click();
-        window.URL.revokeObjectURL(url);
-      }
-    } catch (e) { console.error(e); }
-    setDownloading(false);
+    const finalUrl = reportUrl || 'https://cybercrime.gov.in/';
+    window.location.href = `${API_URL}/api/report/download?target_url=${encodeURIComponent(finalUrl)}`;
+    setTimeout(() => setDownloading(false), 2000);
   };
 
   return (
     <section className="min-h-screen flex flex-col items-center justify-start pt-40 pb-20 px-4">
       <AnimatedSection className="w-full max-w-[600px]">
-        <div className="bg-white/80 backdrop-blur-2xl border border-white/50 shadow-2xl rounded-3xl p-12 text-center">
+        <div className="bg-white/80 backdrop-blur-2xl border border-white/50 shadow-2xl rounded-3xl p-10 text-center">
           <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center mx-auto mb-6">
             <FileText className="w-8 h-8 text-red-500" />
           </div>
           <h2 className="text-3xl font-black text-[#0f172a] mb-2">Compliance Report</h2>
-          <p className="text-slate-500 mb-8">Download a formal PDF report with all scan results, CVSS scores, and remediation steps.</p>
+          <p className="text-slate-500 mb-6">Generate and download an official PDF security assessment report.</p>
+          
+          <div className="mb-6 text-left">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Target Website URL</label>
+            <input type="text" value={reportUrl} onChange={e => setReportUrl(e.target.value)}
+              placeholder="e.g. https://cybercrime.gov.in"
+              className="w-full bg-[#fef7f0]/60 border border-orange-200/40 rounded-2xl py-3 px-4 text-[#0f172a] font-medium text-sm focus:outline-none focus:border-red-400" />
+          </div>
+
           <motion.button onClick={handleDownload} disabled={downloading} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
             className="bg-red-500 hover:bg-red-600 text-white font-bold px-10 py-4 rounded-xl shadow-lg shadow-red-500/20 disabled:opacity-50 transition-colors flex items-center gap-2 mx-auto text-[15px]">
-            <Download className="w-5 h-5" /> {downloading ? 'Generating...' : 'Export PDF Report'}
+            <Download className="w-5 h-5" /> {downloading ? 'Generating PDF...' : 'Export PDF Report'}
           </motion.button>
         </div>
       </AnimatedSection>
@@ -445,7 +518,7 @@ function ReportPage() {
 }
 
 /* ──────────────────────────────────────────────
-   FEATURES / HOW IT WORKS (kept from before)
+   FEATURES SECTION
    ────────────────────────────────────────────── */
 function FeaturesSection() {
   const features = [
@@ -505,15 +578,17 @@ function Footer() {
    APP
    ────────────────────────────────────────────── */
 function AppLayout() {
-  const location = useLocation();
-  const isHome = location.pathname === '/';
+  const [authOpen, setAuthOpen] = useState(false);
+  const [user, setUser] = useState(null);
+
   return (
     <div className="min-h-screen font-sans selection:bg-red-500/30 relative scroll-smooth"
       style={{
         backgroundImage: `radial-gradient(ellipse 130% 80% at 50% -10%, rgba(219,234,254,0.5) 0%, transparent 55%), radial-gradient(ellipse 80% 60% at 85% 15%, rgba(252,231,243,0.45) 0%, transparent 50%), radial-gradient(ellipse 70% 50% at 15% 85%, rgba(224,231,255,0.35) 0%, transparent 50%), linear-gradient(180deg, #fafbff 0%, #f1f5f9 35%, #ede5f3 65%, #e8ddf0 85%, #f1f5f9 100%)`,
         backgroundAttachment: 'fixed',
       }}>
-      <Navbar />
+      <Navbar onOpenAuth={() => setAuthOpen(true)} user={user} />
+      <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} onLogin={setUser} user={user} />
       <Routes>
         <Route path="/" element={<><ScannerPage /><FeaturesSection /></>} />
         <Route path="/audit" element={<CredentialAuditPage />} />
