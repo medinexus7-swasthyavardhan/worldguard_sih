@@ -4,7 +4,7 @@ import { motion, AnimatePresence, useScroll, useTransform, useInView } from 'fra
 import {
   ShieldCheck, ArrowRight, Zap, FileText, Download, Key, Bot, Send,
   CheckCircle2, Lock, Globe, Code2, AlertTriangle, Eye, Shield,
-  ScanLine, Bug, Copy, Check, ChevronDown, Radio, Activity, Cpu, GitCommit
+  ScanLine, Bug, Copy, Check, ChevronDown, Activity, Cpu, ExternalLink, Sparkles
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -37,19 +37,20 @@ function AnimatedSection({ children, className = '', delay = 0 }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-80px' });
   return (
-    <motion.div ref={ref} initial={{ opacity: 0, y: 40 }} animate={isInView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }} className={className}>
+    <motion.div ref={ref} initial={{ opacity: 0, y: 35 }} animate={isInView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] }} className={className}>
       {children}
     </motion.div>
   );
 }
 
 /* ──────────────────────────────────────────────
-   CLEAN NON-CLUMSY DROPDOWN NAVBAR
+   MODERN ULTRA-SLICK NAVBAR WITH SLIDING TAB ANIMATION
    ────────────────────────────────────────────── */
 function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
+  const [hoveredTab, setHoveredTab] = useState(null);
   const location = useLocation();
 
   useEffect(() => {
@@ -58,83 +59,121 @@ function Navbar() {
     return () => window.removeEventListener('scroll', handler);
   }, []);
 
+  const hardeningLinks = [
+    { to: '/patch', label: '🌌 Git Patch Exporter (.patch)', desc: 'Zero-touch code auto-fixes' },
+    { to: '/waf', label: '🛡️ WAF Rule Exporter', desc: 'Nginx, Apache & Cloudflare WAF' },
+    { to: '/cvss', label: '📊 CVSS v3.1 Calculator', desc: 'NIST Base Score & Vector String' },
+  ];
+
+  const threatLinks = [
+    { to: '/graph', label: '🕸️ Attack Vector Graph', desc: 'Visual exploit chain simulation' },
+    { to: '/darknet', label: '🛰️ Darknet Secret Leak Radar', desc: 'Leaked API keys & DB passwords' },
+    { to: '/pqc', label: '🧬 Post-Quantum PQC Audit', desc: 'NIST 2024 Quantum TLS Readiness' },
+    { to: '/phishing', label: '🚨 Phishing & Typosquatting', desc: 'Imposter domain resolution shield' },
+    { to: '/audit', label: '🔑 Credential Exposure Audit', desc: 'k-Anonymity breach detection' },
+  ];
+
+  const isHardeningActive = hardeningLinks.some(l => l.to === location.pathname);
+  const isThreatActive = threatLinks.some(l => l.to === location.pathname);
+
   return (
     <motion.header initial={{ y: -40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.8 }}
-      className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[96%] max-w-[1240px] transition-all duration-700 ${scrolled ? 'bg-white/95 shadow-2xl shadow-black/8' : 'bg-white/80 shadow-xl shadow-black/4'} backdrop-blur-2xl border border-white/50 rounded-full px-6 py-3`}>
+      className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[96%] max-w-[1240px] transition-all duration-700 ${
+        scrolled ? 'bg-white/95 shadow-2xl shadow-black/8 border-white/80' : 'bg-white/80 shadow-xl shadow-black/4 border-white/50'
+      } backdrop-blur-2xl border rounded-full px-6 py-2.5`}>
       <div className="flex items-center justify-between">
         
-        {/* Left: Custom Image Logo */}
-        <Link to="/" className="flex items-center gap-2.5 shrink-0">
-          <img src="/logo.png" alt="SDS Kavach Logo" className="h-9 w-auto object-contain mix-blend-multiply drop-shadow-sm" onError={(e) => { e.target.style.display='none'; }} />
+        {/* Left: Custom Blended Image Logo */}
+        <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
+          <img src="/logo.png" alt="SDS Kavach Logo" className="h-9 w-auto object-contain mix-blend-multiply drop-shadow-sm transition-transform duration-300 group-hover:scale-105" onError={(e) => { e.target.style.display='none'; }} />
           <span className="font-black text-[20px] tracking-tight text-[#0f172a] leading-none select-none">sds<span className="text-red-500">kavach</span></span>
         </Link>
 
-        {/* Center: Grouped Non-Clumsy Navigation */}
-        <nav className="hidden lg:flex items-center gap-6 justify-center flex-1 mx-4">
-          <Link to="/" className={`text-[13.5px] font-semibold transition-all ${location.pathname === '/' ? 'text-red-500 font-bold' : 'text-slate-600 hover:text-red-500'}`}>
-            Scanner
+        {/* Center: Modern Sliding Tab Navbar */}
+        <nav className="hidden lg:flex items-center gap-2 justify-center flex-1 mx-4 relative" onMouseLeave={() => setHoveredTab(null)}>
+          
+          {/* 1. Scanner Tab */}
+          <Link to="/" onMouseEnter={() => setHoveredTab('scanner')} className="relative px-4 py-2 text-[13.5px] font-semibold transition-colors duration-200">
+            {location.pathname === '/' && (
+              <motion.div layoutId="nav-pill" className="absolute inset-0 bg-red-500 rounded-full shadow-md shadow-red-500/20" transition={{ type: 'spring', stiffness: 350, damping: 30 }} />
+            )}
+            <span className={`relative z-10 ${location.pathname === '/' ? 'text-white font-bold' : 'text-slate-600 hover:text-slate-900'}`}>
+              Scanner
+            </span>
           </Link>
 
-          {/* Hardening Tools Dropdown */}
-          <div className="relative" onMouseEnter={() => setOpenDropdown('hardening')} onMouseLeave={() => setOpenDropdown(null)}>
-            <button className="flex items-center gap-1 text-[13.5px] font-semibold text-slate-600 hover:text-red-500 py-1">
-              Hardening <ChevronDown className="w-3.5 h-3.5" />
+          {/* 2. Hardening Tools Dropdown */}
+          <div className="relative" onMouseEnter={() => { setOpenDropdown('hardening'); setHoveredTab('hardening'); }} onMouseLeave={() => setOpenDropdown(null)}>
+            <button className={`relative px-4 py-2 text-[13.5px] font-semibold transition-colors duration-200 flex items-center gap-1.5`}>
+              {isHardeningActive && (
+                <motion.div layoutId="nav-pill" className="absolute inset-0 bg-red-500 rounded-full shadow-md shadow-red-500/20" transition={{ type: 'spring', stiffness: 350, damping: 30 }} />
+              )}
+              <span className={`relative z-10 flex items-center gap-1 ${isHardeningActive ? 'text-white font-bold' : 'text-slate-600 hover:text-slate-900'}`}>
+                Hardening <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openDropdown === 'hardening' ? 'rotate-180' : ''}`} />
+              </span>
             </button>
             <AnimatePresence>
               {openDropdown === 'hardening' && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                  className="absolute top-full left-0 w-52 bg-white border border-slate-100 shadow-2xl rounded-2xl p-2 z-50 space-y-1">
-                  <Link to="/patch" className="block px-3 py-2 text-xs font-bold text-slate-700 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors">
-                    🌌 Git Patch Exporter (.patch)
-                  </Link>
-                  <Link to="/waf" className="block px-3 py-2 text-xs font-bold text-slate-700 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors">
-                    🛡️ WAF Rule Exporter
-                  </Link>
-                  <Link to="/cvss" className="block px-3 py-2 text-xs font-bold text-slate-700 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors">
-                    📊 CVSS v3.1 Calculator
-                  </Link>
+                <motion.div initial={{ opacity: 0, y: 12, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.96 }} transition={{ duration: 0.2 }}
+                  className="absolute top-full left-0 mt-2 w-64 bg-white/95 backdrop-blur-2xl border border-slate-100 shadow-2xl rounded-2xl p-2 z-50 space-y-1">
+                  {hardeningLinks.map(l => (
+                    <Link key={l.to} to={l.to} className="block px-3.5 py-2.5 rounded-xl hover:bg-red-50/80 transition-colors group">
+                      <div className="text-xs font-bold text-slate-800 group-hover:text-red-600">{l.label}</div>
+                      <div className="text-[11px] text-slate-400 font-medium mt-0.5">{l.desc}</div>
+                    </Link>
+                  ))}
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          {/* Threat Intel Dropdown */}
-          <div className="relative" onMouseEnter={() => setOpenDropdown('threat')} onMouseLeave={() => setOpenDropdown(null)}>
-            <button className="flex items-center gap-1 text-[13.5px] font-semibold text-slate-600 hover:text-red-500 py-1">
-              Threat Intel <ChevronDown className="w-3.5 h-3.5" />
+          {/* 3. Threat Intel Dropdown */}
+          <div className="relative" onMouseEnter={() => { setOpenDropdown('threat'); setHoveredTab('threat'); }} onMouseLeave={() => setOpenDropdown(null)}>
+            <button className="relative px-4 py-2 text-[13.5px] font-semibold transition-colors duration-200 flex items-center gap-1.5">
+              {isThreatActive && (
+                <motion.div layoutId="nav-pill" className="absolute inset-0 bg-red-500 rounded-full shadow-md shadow-red-500/20" transition={{ type: 'spring', stiffness: 350, damping: 30 }} />
+              )}
+              <span className={`relative z-10 flex items-center gap-1 ${isThreatActive ? 'text-white font-bold' : 'text-slate-600 hover:text-slate-900'}`}>
+                Threat Intel <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${openDropdown === 'threat' ? 'rotate-180' : ''}`} />
+              </span>
             </button>
             <AnimatePresence>
               {openDropdown === 'threat' && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                  className="absolute top-full left-0 w-56 bg-white border border-slate-100 shadow-2xl rounded-2xl p-2 z-50 space-y-1">
-                  <Link to="/graph" className="block px-3 py-2 text-xs font-bold text-slate-700 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors">
-                    🕸️ Attack Vector Graph
-                  </Link>
-                  <Link to="/darknet" className="block px-3 py-2 text-xs font-bold text-slate-700 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors">
-                    🛰️ Darknet Secret Leak Radar
-                  </Link>
-                  <Link to="/pqc" className="block px-3 py-2 text-xs font-bold text-slate-700 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors">
-                    🧬 Post-Quantum PQC Audit
-                  </Link>
-                  <Link to="/phishing" className="block px-3 py-2 text-xs font-bold text-slate-700 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors">
-                    🚨 Phishing & Typosquatting
-                  </Link>
-                  <Link to="/audit" className="block px-3 py-2 text-xs font-bold text-slate-700 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors">
-                    🔑 Credential Exposure Audit
-                  </Link>
+                <motion.div initial={{ opacity: 0, y: 12, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.96 }} transition={{ duration: 0.2 }}
+                  className="absolute top-full left-0 mt-2 w-72 bg-white/95 backdrop-blur-2xl border border-slate-100 shadow-2xl rounded-2xl p-2 z-50 space-y-1">
+                  {threatLinks.map(l => (
+                    <Link key={l.to} to={l.to} className="block px-3.5 py-2.5 rounded-xl hover:bg-red-50/80 transition-colors group">
+                      <div className="text-xs font-bold text-slate-800 group-hover:text-red-600">{l.label}</div>
+                      <div className="text-[11px] text-slate-400 font-medium mt-0.5">{l.desc}</div>
+                    </Link>
+                  ))}
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          <Link to="/analyst" className={`text-[13.5px] font-semibold transition-all ${location.pathname === '/analyst' ? 'text-red-500 font-bold' : 'text-slate-600 hover:text-red-500'}`}>
-            AI Analyst
+          {/* 4. AI Analyst Tab */}
+          <Link to="/analyst" onMouseEnter={() => setHoveredTab('analyst')} className="relative px-4 py-2 text-[13.5px] font-semibold transition-colors duration-200">
+            {location.pathname === '/analyst' && (
+              <motion.div layoutId="nav-pill" className="absolute inset-0 bg-red-500 rounded-full shadow-md shadow-red-500/20" transition={{ type: 'spring', stiffness: 350, damping: 30 }} />
+            )}
+            <span className={`relative z-10 ${location.pathname === '/analyst' ? 'text-white font-bold' : 'text-slate-600 hover:text-slate-900'}`}>
+              AI Analyst
+            </span>
           </Link>
-          <Link to="/report" className={`text-[13.5px] font-semibold transition-all ${location.pathname === '/report' ? 'text-red-500 font-bold' : 'text-slate-600 hover:text-red-500'}`}>
-            Report
+
+          {/* 5. Report Tab */}
+          <Link to="/report" onMouseEnter={() => setHoveredTab('report')} className="relative px-4 py-2 text-[13.5px] font-semibold transition-colors duration-200">
+            {location.pathname === '/report' && (
+              <motion.div layoutId="nav-pill" className="absolute inset-0 bg-red-500 rounded-full shadow-md shadow-red-500/20" transition={{ type: 'spring', stiffness: 350, damping: 30 }} />
+            )}
+            <span className={`relative z-10 ${location.pathname === '/report' ? 'text-white font-bold' : 'text-slate-600 hover:text-slate-900'}`}>
+              Report
+            </span>
           </Link>
         </nav>
 
+        {/* Right Balance Spacer */}
         <div className="w-[120px] hidden lg:block" />
       </div>
     </motion.header>
@@ -142,7 +181,7 @@ function Navbar() {
 }
 
 /* ──────────────────────────────────────────────
-   1. SCANNER PAGE
+   1. SCANNER PAGE (FULL FUNCTIONAL)
    ────────────────────────────────────────────── */
 function ScannerPage() {
   const [targetUrl, setTargetUrl] = useState('');
@@ -171,7 +210,7 @@ function ScannerPage() {
         setFindings(data.findings);
         setScore(data.score);
         localStorage.setItem('sdskavach_last_url', data.target_url);
-      } else { setError('Scan failed.'); }
+      } else { setError('Scan failed. Check backend connection.'); }
     } catch { setError('Cannot connect to SDS Kavach API.'); }
     setIsScanning(false);
   };
@@ -436,13 +475,22 @@ function PQCAuditPage() {
 }
 
 /* ──────────────────────────────────────────────
-   EXISTING PAGES (WAF, PHISHING, CVSS, AUDIT, ANALYST, REPORT)
+   HARDENING & THREAT INTEL TOOLS (WAF, PHISHING, CVSS, AUDIT, ANALYST, REPORT)
    ────────────────────────────────────────────── */
 function WAFExporterPage() {
   const [domain, setDomain] = useState('cybercrime.gov.in');
   const [wafData, setWafData] = useState(null);
   const [activeTab, setActiveTab] = useState('nginx');
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => { fetch(`${API_URL}/api/waf-rules?target_domain=${domain}`).then(r=>r.json()).then(setWafData); }, []);
+
+  const copyRule = (code) => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <section className="min-h-screen flex flex-col items-center pt-36 pb-20 px-4">
       <AnimatedSection className="w-full max-w-[950px]">
@@ -450,7 +498,11 @@ function WAFExporterPage() {
           <h2 className="text-4xl font-black text-[#0f172a]">WAF Rule <span className="text-red-500">Exporter</span></h2>
         </div>
         {wafData && (
-          <div className="bg-[#0f172a] text-slate-200 rounded-3xl p-6">
+          <div className="bg-[#0f172a] text-slate-200 rounded-3xl p-6 relative">
+            <button onClick={() => copyRule(wafData[activeTab])} className="absolute top-8 right-8 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 px-3.5 py-2 rounded-lg flex items-center gap-1.5">
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? 'Copied!' : 'Copy Rule'}
+            </button>
             <pre className="font-mono text-xs overflow-x-auto">{wafData[activeTab]}</pre>
           </div>
         )}
