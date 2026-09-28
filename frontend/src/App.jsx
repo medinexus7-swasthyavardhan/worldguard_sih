@@ -394,13 +394,19 @@ function CredentialAuditPage() {
    ────────────────────────────────────────────── */
 function AIAnalystPage() {
   const [messages, setMessages] = useState([
-    { role: 'ai', text: "I'm your SDS Kavach Security Analyst. Ask me about any vulnerability — SQL Injection, XSS, Access Control, Headers, Cookies, HSTS — and I'll give you exact remediation code." }
+    { role: 'ai', text: "Hello! 👋 I'm your SDS Kavach Security Analyst. Ask me about any vulnerability — SQL Injection, XSS, Access Control, Headers, Cookies, HSTS — and I'll provide exact remediation code and security advice." }
   ]);
   const [input, setInput] = useState('');
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('sdskavach_gemini_key') || '');
   const [loading, setLoading] = useState(false);
   const chatEndRef = useRef(null);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  const handleKeyChange = (val) => {
+    setApiKey(val);
+    localStorage.setItem('sdskavach_gemini_key', val);
+  };
 
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -412,7 +418,7 @@ function AIAnalystPage() {
       const resp = await fetch(`${API_URL}/api/ai-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMsg }),
+        body: JSON.stringify({ message: userMsg, api_key: apiKey || undefined }),
       });
       const data = await resp.json();
       setMessages(prev => [...prev, { role: 'ai', text: data.response }]);
@@ -425,12 +431,22 @@ function AIAnalystPage() {
   return (
     <section className="min-h-screen flex flex-col items-center justify-start pt-40 pb-20 px-4">
       <AnimatedSection className="w-full max-w-[800px]">
-        <div className="text-center mb-10">
-          <span className="text-red-500 font-bold text-sm uppercase tracking-[0.2em] mb-4 block">AI-Powered</span>
+        <div className="text-center mb-6">
+          <span className="text-red-500 font-bold text-sm uppercase tracking-[0.2em] mb-2 block">AI-Powered</span>
           <h2 className="text-4xl md:text-5xl font-black text-[#0f172a] tracking-tight">Security <span className="text-red-500" style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic' }}>Analyst</span></h2>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-2xl border border-white/50 shadow-2xl rounded-3xl overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 320px)', minHeight: '500px' }}>
+        {/* Gemini API Key Bar */}
+        <div className="mb-4 bg-white/70 backdrop-blur-md border border-white/50 rounded-2xl p-3 flex items-center gap-3 text-xs">
+          <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+          <span className="font-bold text-slate-600 shrink-0">Gemini Key:</span>
+          <input type="password" placeholder="Paste optional Gemini API Key (AIzaSy...)" value={apiKey}
+            onChange={e => handleKeyChange(e.target.value)}
+            className="flex-1 bg-white/80 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-red-400 font-mono" />
+          {apiKey && <span className="text-emerald-600 font-bold text-[11px] bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full shrink-0">Active</span>}
+        </div>
+
+        <div className="bg-white/80 backdrop-blur-2xl border border-white/50 shadow-2xl rounded-3xl overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 360px)', minHeight: '480px' }}>
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {messages.map((msg, i) => (
               <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
@@ -461,7 +477,7 @@ function AIAnalystPage() {
 
           <div className="p-4 border-t border-slate-100 bg-white/60">
             <div className="flex gap-3">
-              <input type="text" placeholder="Ask about SQL Injection, XSS, Headers, Cookies..." value={input}
+              <input type="text" placeholder="Ask about SQL Injection, XSS, Headers, Cookies, or any security topic..." value={input}
                 onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
                 className="flex-1 bg-[#fef7f0]/60 border border-orange-200/40 rounded-2xl py-3 px-4 text-[#0f172a] font-medium focus:outline-none focus:border-red-400 transition-colors text-sm" />
               <motion.button onClick={sendMessage} disabled={loading || !input.trim()} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}

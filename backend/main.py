@@ -30,6 +30,7 @@ class ScanRequest(BaseModel):
 
 class AIChatRequest(BaseModel):
     message: str
+    api_key: Optional[str] = None
     context: Optional[str] = None
 
 class CredentialAuditRequest(BaseModel):
@@ -248,16 +249,17 @@ async def credential_audit(req: CredentialAuditRequest):
 @app.post("/api/ai-chat")
 async def ai_chat(req: AIChatRequest):
     """AI Security Analyst — Powered by Google Gemini API if key is present, fallback to OWASP Rule Engine."""
-    gemini_key = os.environ.get("GEMINI_API_KEY")
+    gemini_key = req.api_key or os.environ.get("GEMINI_API_KEY")
     
     if gemini_key:
         try:
             async with httpx.AsyncClient(timeout=15) as client:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
                 prompt = (
-                    "You are the SDS Kavach AI Security Analyst. Provide clear, professional cybersecurity advice "
-                    "with code examples and remediation steps based on OWASP standards.\n\n"
-                    f"User Question: {req.message}"
+                    "You are the SDS Kavach AI Security Analyst (Secure Defense System). "
+                    "Provide helpful, concise, and clear cybersecurity advice, code examples, "
+                    "and remediation steps based on OWASP standards.\n\n"
+                    f"User: {req.message}"
                 )
                 payload = {"contents": [{"parts": [{"text": prompt}]}]}
                 resp = await client.post(url, json=payload)
@@ -268,7 +270,19 @@ async def ai_chat(req: AIChatRequest):
         except Exception as e:
             pass  # Fallback to rule engine if Gemini API call fails
 
-    msg = req.message.lower()
+    msg = req.message.strip().lower()
+
+    # Friendly greetings & conversational handlers
+    greetings = ["hi", "hello", "hey", "hola", "sup", "greetings", "hi there", "hello there"]
+    if msg in greetings:
+        return {"response": "Hello! 👋 I'm your **SDS Kavach AI Security Analyst**.\n\nI can help you analyze vulnerabilities, generate remediation code, and explain security concepts like:\n- **SQL Injection & XSS**\n- **Broken Access Control**\n- **Security Headers & HSTS**\n- **Secure Cookies & CORS**\n\nWhat security topic would you like to explore?"}
+
+    if any(q in msg for q in ["who are you", "what can you do", "help", "capabilities"]):
+        return {"response": "I am the **SDS Kavach AI Security Assistant**, built for the Smart India Hackathon.\n\nHere is what I can do:\n1. 🛡️ **Remediation Guidance:** Provide code fixes for OWASP Top 10 vulnerabilities.\n2. 📄 **Header Analysis:** Explain missing security headers.\n3. 🔐 **Credential Auditing:** Guide password exposure checks.\n4. 🚀 **Gemini Integration:** Enter your Gemini API Key in the box above to unlock live Gemini LLM responses!"}
+
+    if any(q in msg for q in ["thank", "thanks", "awesome", "great"]):
+        return {"response": "You're welcome! Stay secure! 🛡️ Let me know if you need any more vulnerability remediation advice."}
+
     responses = {
         "sql injection": "**SQL Injection Remediation:**\n\n1. Use parameterized queries / prepared statements\n2. Use an ORM (SQLAlchemy, Prisma)\n3. Validate and sanitize all user inputs\n4. Apply principle of least privilege to DB accounts\n\n```python\n# BAD\ncursor.execute(f\"SELECT * FROM users WHERE id = {user_input}\")\n\n# GOOD\ncursor.execute(\"SELECT * FROM users WHERE id = %s\", (user_input,))\n```",
         "xss": "**XSS Remediation:**\n\n1. Escape all user output in HTML context\n2. Use Content-Security-Policy header\n3. Set `HttpOnly` flag on cookies\n4. Use frameworks that auto-escape (React, Vue)\n\n```javascript\n// BAD\nelement.innerHTML = userInput;\n\n// GOOD\nelement.textContent = userInput;\n```",
@@ -282,7 +296,7 @@ async def ai_chat(req: AIChatRequest):
         if keyword in msg:
             return {"response": response}
 
-    return {"response": f"I understand you're asking about: *\"{req.message}\"*\n\nBased on the OWASP Top 10 framework:\n\n1. **Validate all inputs** on server side\n2. **Apply least privilege** to services\n3. **Enable security headers** (CSP, HSTS, X-Frame-Options)\n4. **Monitor and log** security events\n\nAsk me about SQL Injection, XSS, Headers, or Cookies for specific code fixes!"}
+    return {"response": f"I understand you're asking about: *\"{req.message}\"*\n\nBased on OWASP Top 10 standards:\n\n1. **Validate all inputs** on server side\n2. **Apply least privilege** principle\n3. **Enable security headers** (CSP, HSTS, X-Frame-Options)\n\n*Tip: Enter your Gemini API Key in the box above to get live LLM answers on any question!*"}
 
 @app.get("/api/report/download")
 async def download_report(target_url: Optional[str] = Query(None)):
