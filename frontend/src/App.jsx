@@ -375,14 +375,20 @@ function AIAnalystPage() {
           <h2 className="text-4xl md:text-5xl font-black text-[#0f172a] tracking-tight">Security <span className="text-red-500" style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic' }}>Analyst</span></h2>
         </div>
 
-        {/* Gemini API Key Bar */}
-        <div className="mb-4 bg-white/70 backdrop-blur-md border border-white/50 rounded-2xl p-3 flex items-center gap-3 text-xs">
-          <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-          <span className="font-bold text-slate-600 shrink-0">Gemini Key:</span>
-          <input type="password" placeholder="Paste optional Gemini API Key (AIzaSy...)" value={apiKey}
-            onChange={e => handleKeyChange(e.target.value)}
-            className="flex-1 bg-white/80 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-red-400 font-mono" />
-          {apiKey && <span className="text-emerald-600 font-bold text-[11px] bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full shrink-0">Active</span>}
+        {/* Gemini Engine Status Bar */}
+        <div className="mb-4 bg-white/70 backdrop-blur-md border border-white/50 rounded-2xl p-3 flex items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+            <span className="font-bold text-slate-700">Gemini 1.5 Flash Engine:</span>
+            <span className="text-emerald-600 font-bold text-[11px] bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+              Connected via Render Backend
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <input type="password" placeholder="Custom Key (Optional)" value={apiKey}
+              onChange={e => handleKeyChange(e.target.value)}
+              className="w-44 bg-white/80 border border-slate-200 rounded-xl px-3 py-1 text-xs text-slate-800 focus:outline-none focus:border-red-400 font-mono" />
+          </div>
         </div>
 
         <div className="bg-white/80 backdrop-blur-2xl border border-white/50 shadow-2xl rounded-3xl overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 360px)', minHeight: '480px' }}>
