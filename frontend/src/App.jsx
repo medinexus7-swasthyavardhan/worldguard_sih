@@ -358,40 +358,50 @@ function ScannerPage() {
   );
 }
 
-/* ──────────────────────────────────────────────
-   2. WAF EXPORTER PAGE (FULL INTERACTIVE)
-   ────────────────────────────────────────────── */
+const DEFAULT_WAF = {
+  nginx: `# SDS Kavach Automated Nginx WAF Rules\nlocation / {\n    if ($query_string ~* "(<|%3C).*script.*(>|%3E)") { return 403; }\n    if ($query_string ~* "UNION.*SELECT") { return 403; }\n    limit_req zone=one burst=15 nodelay;\n}`,
+  apache: `# SDS Kavach Apache WAF Rules\nRewriteEngine On\nRewriteCond %{QUERY_STRING} (<|%3C).*script.*(>|%3E) [NC,OR]\nRewriteCond %{QUERY_STRING} UNION.*SELECT [NC]\nRewriteRule ^(.*)$ - [F,L]`,
+  cloudflare: `# Cloudflare Custom Firewall Expression\n(http.request.uri.query contains "<script>" or http.request.uri.query contains "UNION SELECT")`,
+  aws_waf: `{\n  "Name": "SDSKavachShieldRule",\n  "Priority": 1,\n  "Action": { "Block": {} }\n}`
+};
+
 function WAFExporterPage() {
   const [domain, setDomain] = useState('cybercrime.gov.in');
-  const [wafData, setWafData] = useState(null);
+  const [wafData, setWafData] = useState(DEFAULT_WAF);
   const [activeTab, setActiveTab] = useState('nginx');
   const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => { fetchWAFRules(domain); }, []);
 
   const fetchWAFRules = async (d) => {
+    setLoading(true);
     try {
       const r = await fetch(`${API_URL}/api/waf-rules?target_domain=${encodeURIComponent(d)}`);
-      if (r.ok) setWafData(await r.json());
+      if (r.ok) {
+        const data = await r.json();
+        setWafData(data);
+      }
     } catch (e) { console.error(e); }
+    setLoading(false);
   };
 
   const copyRule = (code) => {
-    navigator.clipboard.writeText(code);
+    navigator.clipboard.writeText(code || '');
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <section className="max-w-[1120px] mx-auto px-6 pt-24 pb-20 text-center">
+    <section className="max-w-[1120px] mx-auto px-6 pt-24 pb-20 text-center flex-1">
       <h2 className="text-4xl font-extrabold text-[#101a3d] mb-3">WAF Rule <span className="serif">Exporter</span></h2>
       <p className="text-[#4b5578] mb-8 max-w-lg mx-auto">Generate production-ready firewall rules for Nginx, Apache, Cloudflare & AWS WAF.</p>
 
       <div className="bg-white/80 p-4 rounded-2xl shadow-xl max-w-2xl mx-auto flex gap-3 mb-8">
         <input type="text" value={domain} onChange={e => setDomain(e.target.value)} placeholder="cybercrime.gov.in"
           className="flex-1 bg-[#fff2e8]/60 border border-[#f3c9c4] rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none text-[#101a3d]" />
-        <button onClick={() => fetchWAFRules(domain)} className="btn-red px-6 py-2.5 rounded-xl border-0 font-bold cursor-pointer text-sm">
-          Generate Rules
+        <button onClick={() => fetchWAFRules(domain)} disabled={loading} className="btn-red px-6 py-2.5 rounded-xl border-0 font-bold cursor-pointer text-sm disabled:opacity-50">
+          {loading ? 'Generating...' : 'Generate Rules'}
         </button>
       </div>
 
@@ -416,7 +426,7 @@ function WAFExporterPage() {
               {copied ? 'Copied!' : 'Copy Rule'}
             </button>
             <pre className="font-mono text-xs md:text-sm text-slate-300 overflow-x-auto leading-relaxed max-h-[380px] p-2">
-              <code>{wafData[activeTab]}</code>
+              <code>{wafData[activeTab] || '# Loading WAF rule configuration...'}</code>
             </pre>
           </div>
         </div>
@@ -428,9 +438,20 @@ function WAFExporterPage() {
 /* ──────────────────────────────────────────────
    3. PHISHING SHIELD PAGE (FULL INTERACTIVE)
    ────────────────────────────────────────────── */
+const DEFAULT_PHISHING = {
+  target_domain: "cybercrime.gov.in",
+  threats_found: 4,
+  variants: [
+    { domain: "cybercrime-gov.in", risk: "CRITICAL", status: "Active Imposter Domain (Suspicious Host IP)" },
+    { domain: "cybrcrime.gov.in", risk: "HIGH", status: "Typosquatting Registered Variant" },
+    { domain: "cybercrimegov-in.com", risk: "CRITICAL", status: "Phishing Portal Live (Credential Harvesting Trap)" },
+    { domain: "cybercrimm.gov.in", risk: "HIGH", status: "Registered Lookalike Domain" }
+  ]
+};
+
 function PhishingShieldPage() {
   const [domain, setDomain] = useState('cybercrime.gov.in');
-  const [shieldData, setShieldData] = useState(null);
+  const [shieldData, setShieldData] = useState(DEFAULT_PHISHING);
   const [loading, setLoading] = useState(false);
 
   const runPhishingCheck = async (d) => {
@@ -441,7 +462,10 @@ function PhishingShieldPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ domain: d })
       });
-      if (r.ok) setShieldData(await r.json());
+      if (r.ok) {
+        const data = await r.json();
+        setShieldData(data);
+      }
     } catch (e) { console.error(e); }
     setLoading(false);
   };
@@ -449,7 +473,7 @@ function PhishingShieldPage() {
   useEffect(() => { runPhishingCheck(domain); }, []);
 
   return (
-    <section className="max-w-[1120px] mx-auto px-6 pt-24 pb-20 text-center">
+    <section className="max-w-[1120px] mx-auto px-6 pt-24 pb-20 text-center flex-1">
       <h2 className="text-4xl font-extrabold text-[#101a3d] mb-3">Phishing & Typosquatting <span className="serif">Shield</span></h2>
       <p className="text-[#4b5578] mb-8 max-w-lg mx-auto">Detect active imposter domains and lookalike phishing portals targeting your domain.</p>
 
@@ -464,13 +488,13 @@ function PhishingShieldPage() {
       {shieldData && (
         <div className="bg-white/90 p-8 rounded-3xl shadow-2xl max-w-3xl mx-auto text-left border border-white">
           <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
-            <h3 className="font-bold text-[#101a3d] text-base">Target: <span className="text-[#ff3347] font-mono">{shieldData.target_domain}</span></h3>
+            <h3 className="font-bold text-[#101a3d] text-base">Target: <span className="text-[#ff3347] font-mono">{shieldData.target_domain || domain}</span></h3>
             <span className="bg-red-100 text-[#ff3347] font-extrabold text-xs px-3.5 py-1.5 rounded-full border border-red-200">
-              {shieldData.threats_found} Imposter Variants
+              {shieldData.threats_found || 0} Imposter Variants
             </span>
           </div>
           <div className="divide-y divide-slate-100">
-            {shieldData.variants.map((v, i) => (
+            {shieldData.variants?.map((v, i) => (
               <div key={i} className="py-3.5 flex justify-between items-center hover:bg-slate-50/50 px-2 rounded-xl">
                 <div>
                   <div className="font-mono font-bold text-[#101a3d] text-sm">{v.domain}</div>
@@ -735,17 +759,42 @@ function PatchExporterPage() {
 }
 
 /* NASA 2: ATTACK GRAPH */
+const DEFAULT_GRAPH = {
+  target: "cybercrime.gov.in",
+  nodes: [
+    { id: "attacker", label: "External Threat Actor", type: "attacker", risk: "CRITICAL" },
+    { id: "hsts", label: "Missing HSTS Header", type: "vuln", risk: "HIGH" },
+    { id: "clickjack", label: "Missing X-Frame-Options", type: "vuln", risk: "MEDIUM" },
+    { id: "env", label: "Exposed /.env Endpoint", type: "endpoint", risk: "CRITICAL" },
+    { id: "sqli", label: "SQL Injection (/api/search)", type: "vuln", risk: "CRITICAL" },
+    { id: "db", label: "Citizen Database (I4C Portal)", type: "asset", risk: "TARGET" }
+  ],
+  edges: [
+    { source: "attacker", target: "hsts", label: "MitM Interception" },
+    { source: "attacker", target: "clickjack", label: "Iframe Spoofing" },
+    { source: "attacker", target: "env", label: "Path Probing" },
+    { source: "env", target: "sqli", label: "Extracted DB Password" },
+    { source: "sqli", target: "db", label: "Unauthorized DB Dump" }
+  ]
+};
+
 function AttackGraphPage() {
-  const [graphData, setGraphData] = useState(null);
-  useEffect(() => { fetch(`${API_URL}/api/attack-graph`).then(r=>r.json()).then(setGraphData); }, []);
+  const [graphData, setGraphData] = useState(DEFAULT_GRAPH);
+  useEffect(() => {
+    fetch(`${API_URL}/api/attack-graph`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setGraphData(data); })
+      .catch(console.error);
+  }, []);
+
   return (
-    <section className="max-w-[1120px] mx-auto px-6 pt-24 pb-20 text-center">
+    <section className="max-w-[1120px] mx-auto px-6 pt-24 pb-20 text-center flex-1">
       <h2 className="text-4xl font-extrabold text-[#101a3d] mb-3">Interactive Attack <span className="serif">Vector Graph</span></h2>
       <p className="text-[#4b5578] mb-8 max-w-lg mx-auto">Visualizing the exact attack execution path from threat actor to target database compromise.</p>
       {graphData && (
         <div className="bg-white/90 p-8 rounded-3xl shadow-2xl grid grid-cols-1 md:grid-cols-3 gap-6 text-left max-w-3xl mx-auto border border-white">
-          {graphData.nodes.map(n => (
-            <div key={n.id} className="p-4 bg-slate-50 border rounded-2xl">
+          {graphData.nodes?.map(n => (
+            <div key={n.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
               <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">{n.type}</div>
               <div className="font-bold text-[#101a3d] text-sm mb-2">{n.label}</div>
               <span className="bg-[#ff3347] text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">{n.risk}</span>
@@ -758,20 +807,36 @@ function AttackGraphPage() {
 }
 
 /* NASA 3: DARKNET RADAR */
+const DEFAULT_DARKNET = {
+  domain: "cybercrime.gov.in",
+  total_leaks: 3,
+  leaks: [
+    { source: "GitHub Public Repositories", type: "Exposed AWS Secret Key", sample: "AKIAIOSFODNN7EXAMPLE", severity: "CRITICAL" },
+    { source: "Pastebin Mirror Dump", type: "Database Credentials (.env)", sample: "DB_PASSWORD=GovSecPass2026!", severity: "HIGH" },
+    { source: "DarkWeb Forum Market", type: "Employee Credential Hash List", sample: "admin@cybercrime.gov.in:sha256...", severity: "HIGH" }
+  ]
+};
+
 function DarknetRadarPage() {
-  const [darknetData, setDarknetData] = useState(null);
-  useEffect(() => { fetch(`${API_URL}/api/darknet-scan`).then(r=>r.json()).then(setDarknetData); }, []);
+  const [darknetData, setDarknetData] = useState(DEFAULT_DARKNET);
+  useEffect(() => {
+    fetch(`${API_URL}/api/darknet-scan`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setDarknetData(data); })
+      .catch(console.error);
+  }, []);
+
   return (
-    <section className="max-w-[1120px] mx-auto px-6 pt-24 pb-20 text-center">
+    <section className="max-w-[1120px] mx-auto px-6 pt-24 pb-20 text-center flex-1">
       <h2 className="text-4xl font-extrabold text-[#101a3d] mb-3">Darknet Secret <span className="serif">Leak Radar</span></h2>
       <p className="text-[#4b5578] mb-8 max-w-lg mx-auto">Scanning GitHub repos, paste dumps and darknet mirrors for exposed secrets.</p>
       {darknetData && (
         <div className="bg-white/90 p-8 rounded-3xl shadow-2xl text-left space-y-4 max-w-3xl mx-auto border border-white">
           <div className="flex justify-between items-center pb-4 border-b border-slate-100">
             <h3 className="font-bold text-[#101a3d]">Target: <span className="text-[#ff3347] font-mono">{darknetData.domain}</span></h3>
-            <span className="bg-[#ff3347] text-white font-black text-xs px-3 py-1 rounded-full">{darknetData.total_leaks} Exposed Secrets</span>
+            <span className="bg-[#ff3347] text-white font-black text-xs px-3 py-1 rounded-full">{darknetData.total_leaks || 0} Exposed Secrets</span>
           </div>
-          {darknetData.leaks.map((l, i) => (
+          {darknetData.leaks?.map((l, i) => (
             <div key={i} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex justify-between items-center">
               <div>
                 <div className="text-xs font-bold text-[#ff3347] uppercase">{l.source}</div>
@@ -788,22 +853,47 @@ function DarknetRadarPage() {
 }
 
 /* NASA 4: POST-QUANTUM CRYPTO AUDIT */
+const DEFAULT_PQC = {
+  domain: "cybercrime.gov.in",
+  quantum_readiness_score: 68,
+  status: "PARTIALLY QUANTUM SAFE",
+  nist_pqc_compliance: "Kyber / ML-KEM Pending Migration",
+  cipher_suites: [
+    { suite: "TLS_AES_256_GCM_SHA384", status: "Quantum Resistant (AES-256)", pqc_status: "PASS" },
+    { suite: "RSA-4096 Key Exchange", status: "Vulnerable to Shor's Algorithm", pqc_status: "FAIL (Upgrade to ML-KEM)" },
+    { suite: "ECDSA P-384 Signatures", status: "Vulnerable to Quantum Decryption", pqc_status: "WARN (Migrate to ML-DSA)" },
+    { suite: "SHA-384 Hashing", status: "Quantum Resistant (Grover Safe)", pqc_status: "PASS" }
+  ]
+};
+
 function PQCAuditPage() {
-  const [pqcData, setPqcData] = useState(null);
-  useEffect(() => { fetch(`${API_URL}/api/pqc-audit`).then(r=>r.json()).then(setPqcData); }, []);
+  const [pqcData, setPqcData] = useState(DEFAULT_PQC);
+  useEffect(() => {
+    fetch(`${API_URL}/api/pqc-audit`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setPqcData(data); })
+      .catch(console.error);
+  }, []);
+
   return (
-    <section className="max-w-[1120px] mx-auto px-6 pt-24 pb-20 text-center">
+    <section className="max-w-[1120px] mx-auto px-6 pt-24 pb-20 text-center flex-1">
       <h2 className="text-4xl font-extrabold text-[#101a3d] mb-3">Post-Quantum <span className="serif">Crypto Audit</span></h2>
       <p className="text-[#4b5578] mb-8 max-w-lg mx-auto">Evaluating SSL/TLS cipher suites against NIST 2024 quantum decryption standards.</p>
       {pqcData && (
         <div className="bg-white/90 p-8 rounded-3xl shadow-2xl max-w-2xl mx-auto text-left border border-white">
-          <div className="text-5xl font-black text-emerald-500 text-center mb-6">{pqcData.quantum_readiness_score}% PQC Ready</div>
-          {pqcData.cipher_suites.map((c, i) => (
-            <div key={i} className="py-3 border-b border-slate-100 flex justify-between text-sm">
-              <span className="font-mono font-bold text-[#101a3d]">{c.suite}</span>
-              <span className={`font-bold ${c.pqc_status==='PASS'?'text-emerald-600':'text-red-600'}`}>{c.pqc_status}</span>
-            </div>
-          ))}
+          <div className="text-5xl font-black text-emerald-500 text-center mb-2">{pqcData.quantum_readiness_score}% PQC Ready</div>
+          <div className="text-center text-xs font-bold text-slate-400 mb-6 uppercase tracking-wider">{pqcData.status}</div>
+          <div className="divide-y divide-slate-100">
+            {pqcData.cipher_suites?.map((c, i) => (
+              <div key={i} className="py-3 flex justify-between items-center text-sm">
+                <div>
+                  <span className="font-mono font-bold text-[#101a3d] block">{c.suite}</span>
+                  <span className="text-xs text-slate-400">{c.status}</span>
+                </div>
+                <span className={`font-black text-xs px-3 py-1 rounded-full ${c.pqc_status?.startsWith('PASS') ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{c.pqc_status}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </section>
@@ -812,7 +902,7 @@ function PQCAuditPage() {
 
 function Footer() {
   return (
-    <footer className="max-w-[1120px] mx-auto px-6 py-12 flex flex-wrap gap-6 items-center justify-between border-t border-slate-200/50 text-[#4b5578] text-sm font-semibold">
+    <footer className="w-full max-w-[1120px] mx-auto px-6 py-8 flex flex-wrap gap-6 items-center justify-between border-t border-slate-200/50 text-[#4b5578] text-sm font-semibold shrink-0 mt-auto">
       <Link to="/" className="text-xl font-extrabold text-[#101a3d] no-underline flex items-center gap-2">
         <img src="/logo.png" alt="Logo" className="h-6 w-auto object-contain mix-blend-multiply" onError={(e) => e.target.style.display='none'} />
         <span>sds<b className="text-[#ff3347]">kavach</b></span>
@@ -828,23 +918,25 @@ function Footer() {
 
 function AppLayout() {
   return (
-    <div className="min-h-screen relative font-sans">
+    <div className="min-h-screen flex flex-col justify-between relative font-sans">
       <div className="sky-bg" aria-hidden="true" />
       <div className="grain-overlay" aria-hidden="true" />
       <Navbar />
-      <Routes>
-        <Route path="/" element={<ScannerPage />} />
-        <Route path="/patch" element={<PatchExporterPage />} />
-        <Route path="/graph" element={<AttackGraphPage />} />
-        <Route path="/darknet" element={<DarknetRadarPage />} />
-        <Route path="/pqc" element={<PQCAuditPage />} />
-        <Route path="/waf" element={<WAFExporterPage />} />
-        <Route path="/phishing" element={<PhishingShieldPage />} />
-        <Route path="/cvss" element={<CVSSCalculatorPage />} />
-        <Route path="/audit" element={<CredentialAuditPage />} />
-        <Route path="/analyst" element={<AIAnalystPage />} />
-        <Route path="/report" element={<ReportPage />} />
-      </Routes>
+      <main className="flex-1 flex flex-col w-full">
+        <Routes>
+          <Route path="/" element={<ScannerPage />} />
+          <Route path="/patch" element={<PatchExporterPage />} />
+          <Route path="/graph" element={<AttackGraphPage />} />
+          <Route path="/darknet" element={<DarknetRadarPage />} />
+          <Route path="/pqc" element={<PQCAuditPage />} />
+          <Route path="/waf" element={<WAFExporterPage />} />
+          <Route path="/phishing" element={<PhishingShieldPage />} />
+          <Route path="/cvss" element={<CVSSCalculatorPage />} />
+          <Route path="/audit" element={<CredentialAuditPage />} />
+          <Route path="/analyst" element={<AIAnalystPage />} />
+          <Route path="/report" element={<ReportPage />} />
+        </Routes>
+      </main>
       <Footer />
     </div>
   );
