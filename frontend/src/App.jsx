@@ -77,9 +77,9 @@ function Navbar() {
       className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[96%] max-w-[1240px] transition-all duration-700 ${scrolled ? 'bg-white/95 shadow-2xl shadow-black/8' : 'bg-white/75 shadow-xl shadow-black/4'} backdrop-blur-2xl border border-white/50 rounded-full px-6 py-3`}>
       <div className="flex items-center justify-between">
         
-        {/* Left: Custom Image Logo from E:\midsem\Untitled design.png */}
+        {/* Left: Custom Image Logo with transparent background blending */}
         <Link to="/" className="flex items-center gap-2.5 shrink-0">
-          <img src="/logo.png" alt="SDS Kavach Logo" className="h-9 w-auto object-contain drop-shadow-sm" onError={(e) => { e.target.style.display='none'; }} />
+          <img src="/logo.png" alt="SDS Kavach Logo" className="h-9 w-auto object-contain mix-blend-multiply drop-shadow-sm" onError={(e) => { e.target.style.display='none'; }} />
           <span className="font-black text-[20px] tracking-tight text-[#0f172a] leading-none select-none">sds<span className="text-red-500">kavach</span></span>
         </Link>
 

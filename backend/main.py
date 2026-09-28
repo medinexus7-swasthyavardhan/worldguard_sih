@@ -348,30 +348,65 @@ async def credential_audit(req: CredentialAuditRequest):
 
 @app.post("/api/ai-chat")
 async def ai_chat(req: AIChatRequest):
-    gemini_key = (req.api_key or os.environ.get("GEMINI_API_KEY") or "").strip()
+    # Try all common env var names for Gemini API Key
+    gemini_key = (
+        req.api_key or
+        os.environ.get("GEMINI_API_KEY") or
+        os.environ.get("GEMINI_KEY") or
+        os.environ.get("GOOGLE_API_KEY") or
+        os.environ.get("API_KEY") or ""
+    ).strip()
+
     if gemini_key:
-        for model_name in ["gemini-1.5-flash", "gemini-pro"]:
-            try:
-                async with httpx.AsyncClient(timeout=15) as client:
+        models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash-exp", "gemini-pro"]
+        async with httpx.AsyncClient(timeout=12) as client:
+            for model_name in models:
+                try:
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_key}"
-                    prompt = f"You are the SDS Kavach AI Security Analyst (Secure Defense System). Provide clear cybersecurity advice & code for: {req.message}"
-                    resp = await client.post(url, json={"contents": [{"parts": [{"text": prompt}]}]})
+                    prompt = (
+                        "You are the SDS Kavach AI Security Analyst (Secure Defense System). "
+                        "Respond to the user with helpful, friendly, and expert security guidance.\n\n"
+                        f"User Message: {req.message}"
+                    )
+                    payload = {"contents": [{"parts": [{"text": prompt}]}]}
+                    resp = await client.post(url, json=payload)
                     if resp.status_code == 200:
-                        return {"response": resp.json()["candidates"][0]["content"]["parts"][0]["text"]}
-            except: pass
+                        data = resp.json()
+                        ai_text = data["candidates"][0]["content"]["parts"][0]["text"]
+                        return {"response": ai_text}
+                except Exception as e:
+                    print(f"Gemini API error for {model_name}: {e}")
 
     msg = req.message.strip().lower()
-    if msg in ["hi", "hello", "hey", "hola"]:
-        return {"response": "Hello! 👋 I'm your **SDS Kavach AI Security Analyst**.\n\nAsk me about:\n- **SQL Injection & XSS**\n- **Broken Access Control**\n- **Security Headers & HSTS**\n- **Cookie Flags & CORS**"}
 
-    responses = {
-        "sql injection": "**SQL Injection Remediation:**\n```python\n# Use prepared statements\ncursor.execute('SELECT * FROM users WHERE id = %s', (user_input,))\n```",
-        "xss": "**XSS Remediation:**\n```javascript\n// Escape user HTML\nelement.textContent = userInput;\n```",
-        "header": "**Security Headers:**\n```\nX-Frame-Options: DENY\nX-Content-Type-Options: nosniff\nStrict-Transport-Security: max-age=31536000\nContent-Security-Policy: default-src 'self'\n```",
-    }
-    for k, v in responses.items():
-        if k in msg: return {"response": v}
-    return {"response": f"I understand you're asking about: *\"{req.message}\"*\n\nBased on OWASP Top 10 standards:\n1. Validate all inputs\n2. Apply least privilege\n3. Enable CSP & HSTS headers"}
+    # Smart Conversational & Natural Language Fallback Engine
+    if any(w in msg for w in ["hi", "hello", "hey", "hola", "greetings", "sup"]):
+        return {"response": "Hello! 👋 I'm your **SDS Kavach AI Security Analyst**.\n\nI'm doing great and ready to audit your application stack! How can I assist you today?"}
+
+    if any(w in msg for w in ["how are you", "how r u", "how aare you", "how are u"]):
+        return {"response": "I'm doing fantastic, thank you! 🛡️ As the SDS Kavach AI Security Analyst, I'm fully operational and actively monitoring threats. How can I help secure your application or API today?"}
+
+    if any(w in msg for w in ["who are you", "what are you", "what can you do", "capabilities", "help"]):
+        return {"response": "I am **SDS Kavach AI Security Analyst**, an intelligent security assistant built for the Smart India Hackathon.\n\nHere is what I can do for you:\n- 🛡️ **Vulnerability Remediation:** Generate instant code fixes for SQLi, XSS, CSRF, and Broken Auth.\n- 📄 **Security Headers:** Recommend Nginx, Apache, and Cloudflare WAF rules.\n- 🔐 **Credential Exposure:** Explain k-anonymity password auditing.\n- 🚨 **Phishing Shield:** Analyze imposter and typosquatting domain risks."}
+
+    if any(w in msg for w in ["thank", "thanks", "awesome", "great", "cool", "perfect"]):
+        return {"response": "You're very welcome! Stay safe and secure. Let me know if you need any more vulnerability assessment guidance! 🛡️"}
+
+    # Topic-specific security advice
+    if "sql" in msg or "injection" in msg or "sqli" in msg:
+        return {"response": "**SQL Injection (SQLi) Remediation Guide:**\n\nSQL Injection occurs when untrusted user input is directly concatenated into database queries.\n\n**Fix in Python (FastAPI / SQLAlchemy / psycopg2):**\n```python\n# BAD: Vulnerable to SQLi\ncursor.execute(f\"SELECT * FROM users WHERE username = '{user_input}'\")\n\n# GOOD: Parameterized query prevents SQLi\ncursor.execute(\"SELECT * FROM users WHERE username = %s\", (user_input,))\n```\n\n**Best Practices:**\n1. Always use parameterized queries or an ORM.\n2. Apply the Principle of Least Privilege to DB connections."}
+
+    if "xss" in msg or "script" in msg or "cross site" in msg:
+        return {"response": "**Cross-Site Scripting (XSS) Remediation Guide:**\n\nXSS allows attackers to inject malicious client-side scripts into web pages viewed by users.\n\n**Fix in JavaScript / Frontend:**\n```javascript\n// BAD: Renders untrusted HTML\nelement.innerHTML = userInput;\n\n// GOOD: Escapes HTML safely\nelement.textContent = userInput;\n```\n\n**Key Headers to Enable:**\n```http\nContent-Security-Policy: default-src 'self';\nSet-Cookie: session=xyz; Secure; HttpOnly; SameSite=Strict;\n```"}
+
+    if "header" in msg or "hsts" in msg or "csp" in msg or "x-frame" in msg:
+        return {"response": "**Recommended Security Headers Hardening:**\n\nAdd the following production security headers to your server configuration (Nginx / Apache / Cloudflare):\n\n```http\nStrict-Transport-Security: max-age=31536000; includeSubDomains; preload\nX-Frame-Options: DENY\nX-Content-Type-Options: nosniff\nReferrer-Policy: strict-origin-when-cross-origin\nContent-Security-Policy: default-src 'self' https:\nPermissions-Policy: camera=(), microphone=(), geolocation=()\n```"}
+
+    if "cookie" in msg or "session" in msg or "auth" in msg or "token" in msg:
+        return {"response": "**Secure Cookie & Session Management:**\n\nAlways configure session cookies with the following security attributes:\n\n```http\nSet-Cookie: session_id=abc123token; Secure; HttpOnly; SameSite=Strict; Path=/\n```\n- **Secure:** Forces transmission over HTTPS only.\n- **HttpOnly:** Prevents JavaScript access (mitigates XSS cookie theft).\n- **SameSite=Strict:** Protects against Cross-Site Request Forgery (CSRF)."}
+
+    # Dynamic Contextual Fallback for general questions
+    return {"response": f"I understand you're asking about *\"{req.message}\"*\n\nAs your SDS Kavach Security Analyst, here is my security recommendation:\n\n1. 🔒 **Input Validation:** Enforce strict server-side validation and sanitization for all input fields.\n2. 🛡️ **Defense-in-Depth:** Deploy security headers (CSP, HSTS, X-Frame-Options) and configure WAF rules.\n3. 🔐 **Access Control:** Enforce Principle of Least Privilege and RBAC on all API endpoints.\n\nFeel free to ask me specifically about **SQL Injection**, **XSS**, **Security Headers**, or **WAF Configuration**!"}
 
 @app.get("/api/report/download")
 async def download_report(target_url: Optional[str] = Query(None)):
