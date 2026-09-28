@@ -249,26 +249,28 @@ async def credential_audit(req: CredentialAuditRequest):
 @app.post("/api/ai-chat")
 async def ai_chat(req: AIChatRequest):
     """AI Security Analyst — Powered by Google Gemini API if key is present, fallback to OWASP Rule Engine."""
-    gemini_key = req.api_key or os.environ.get("GEMINI_API_KEY")
+    gemini_key = (req.api_key or os.environ.get("GEMINI_API_KEY") or "").strip()
     
     if gemini_key:
-        try:
-            async with httpx.AsyncClient(timeout=15) as client:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
-                prompt = (
-                    "You are the SDS Kavach AI Security Analyst (Secure Defense System). "
-                    "Provide helpful, concise, and clear cybersecurity advice, code examples, "
-                    "and remediation steps based on OWASP standards.\n\n"
-                    f"User: {req.message}"
-                )
-                payload = {"contents": [{"parts": [{"text": prompt}]}]}
-                resp = await client.post(url, json=payload)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    ai_text = data["candidates"][0]["content"]["parts"][0]["text"]
-                    return {"response": ai_text}
-        except Exception as e:
-            pass  # Fallback to rule engine if Gemini API call fails
+        # Try gemini-1.5-flash, then fallback to gemini-pro
+        for model_name in ["gemini-1.5-flash", "gemini-pro"]:
+            try:
+                async with httpx.AsyncClient(timeout=15) as client:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_key}"
+                    prompt = (
+                        "You are the SDS Kavach AI Security Analyst (Secure Defense System). "
+                        "Provide helpful, concise, and clear cybersecurity advice, code examples, "
+                        "and remediation steps based on OWASP standards.\n\n"
+                        f"User: {req.message}"
+                    )
+                    payload = {"contents": [{"parts": [{"text": prompt}]}]}
+                    resp = await client.post(url, json=payload)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        ai_text = data["candidates"][0]["content"]["parts"][0]["text"]
+                        return {"response": ai_text}
+            except Exception as e:
+                pass  # Try next model or fallback
 
     msg = req.message.strip().lower()
 
