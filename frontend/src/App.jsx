@@ -336,16 +336,10 @@ function AIAnalystPage() {
     { role: 'ai', text: "Hello! 👋 I'm your SDS Kavach Security Analyst. Ask me about any vulnerability — SQL Injection, XSS, Access Control, Headers, Cookies, HSTS — and I'll provide exact remediation code and security advice." }
   ]);
   const [input, setInput] = useState('');
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('sdskavach_gemini_key') || '');
   const [loading, setLoading] = useState(false);
   const chatEndRef = useRef(null);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
-
-  const handleKeyChange = (val) => {
-    setApiKey(val);
-    localStorage.setItem('sdskavach_gemini_key', val);
-  };
 
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -357,7 +351,7 @@ function AIAnalystPage() {
       const resp = await fetch(`${API_URL}/api/ai-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMsg, api_key: apiKey || undefined }),
+        body: JSON.stringify({ message: userMsg }),
       });
       const data = await resp.json();
       setMessages(prev => [...prev, { role: 'ai', text: data.response }]);
@@ -379,16 +373,11 @@ function AIAnalystPage() {
         <div className="mb-4 bg-white/70 backdrop-blur-md border border-white/50 rounded-2xl p-3 flex items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-            <span className="font-bold text-slate-700">Gemini 1.5 Flash Engine:</span>
-            <span className="text-emerald-600 font-bold text-[11px] bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
-              Connected via Render Backend
-            </span>
+            <span className="font-bold text-slate-700">Gemini AI Engine:</span>
           </div>
-          <div className="flex items-center gap-2">
-            <input type="password" placeholder="Custom Key (Optional)" value={apiKey}
-              onChange={e => handleKeyChange(e.target.value)}
-              className="w-44 bg-white/80 border border-slate-200 rounded-xl px-3 py-1 text-xs text-slate-800 focus:outline-none focus:border-red-400 font-mono" />
-          </div>
+          <span className="text-emerald-600 font-bold text-[11px] bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Active & Connected
+          </span>
         </div>
 
         <div className="bg-white/80 backdrop-blur-2xl border border-white/50 shadow-2xl rounded-3xl overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 360px)', minHeight: '480px' }}>
