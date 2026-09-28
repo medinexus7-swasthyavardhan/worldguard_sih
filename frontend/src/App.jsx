@@ -229,7 +229,7 @@ function GenerateReport() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'WorldGuard_Security_Report.pdf';
+        a.download = 'SDSKavach_Security_Report.pdf';
         a.click();
       }
     } catch(e) { console.error(e) }
@@ -280,7 +280,7 @@ function Layout() {
               <ShieldCheck className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-xl tracking-tight text-white">WORLDGUARD</h1>
+              <h1 className="font-bold text-xl tracking-tight text-white">SDS KAVACH</h1>
               <p className="text-[10px] text-red-400 font-medium tracking-widest uppercase">I4C Security Engine</p>
             </div>
           </div>

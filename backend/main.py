@@ -70,7 +70,7 @@ def download_report():
     file_path = "security_report.pdf"
     c = canvas.Canvas(file_path)
     c.setFont("Helvetica-Bold", 24)
-    c.drawString(100, 750, "WORLDGUARD Security Assessment")
+    c.drawString(100, 750, "SDS Kavach Security Assessment")
     c.setFont("Helvetica", 14)
     c.drawString(100, 710, "Target: https://cybercrime.gov.in/")
     c.drawString(100, 690, "Generated for: I4C / Ministry of Home Affairs")
@@ -82,5 +82,5 @@ def download_report():
     c.drawString(100, 600, "- 1 Medium Severity Vulnerability Detected")
     
     c.save()
-    return FileResponse(file_path, filename="WorldGuard_Security_Report.pdf", media_type="application/pdf")
+    return FileResponse(file_path, filename="SDSKavach_Security_Report.pdf", media_type="application/pdf")
 
