@@ -900,6 +900,166 @@ function PQCAuditPage() {
   );
 }
 
+/* ──────────────────────────────────────────────
+   CYBERSECURITY SCANNING INTRO ANIMATION OVERLAY
+   ────────────────────────────────────────────── */
+function CyberScanIntro() {
+  const [visible, setVisible] = useState(true);
+  const [progress, setProgress] = useState(0);
+  const [statusText, setStatusText] = useState('INITIALIZING SECURITY PROTOCOL...');
+  const [isSecure, setIsSecure] = useState(false);
+
+  useEffect(() => {
+    // Respect reduced motion preference
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setProgress(100);
+      setIsSecure(true);
+      setStatusText('SECURE CONNECTION ESTABLISHED');
+      const timer = setTimeout(() => setVisible(false), 200);
+      return () => clearTimeout(timer);
+    }
+
+    const durationMs = 3200;
+    const intervalMs = 35;
+    const step = 100 / (durationMs / intervalMs);
+
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        const next = Math.min(100, Math.ceil(prev + step));
+        
+        if (next < 22) {
+          setStatusText('INITIALIZING SECURITY PROTOCOL...');
+        } else if (next < 48) {
+          setStatusText('SCANNING WEBSITE...');
+        } else if (next < 72) {
+          setStatusText('ANALYZING SECURITY LAYERS...');
+        } else if (next < 92) {
+          setStatusText('CHECKING INTERFACE INTEGRITY...');
+        } else if (next < 100) {
+          setStatusText('SECURITY CHECK COMPLETE');
+        } else {
+          setStatusText('SECURE CONNECTION ESTABLISHED');
+          setIsSecure(true);
+        }
+
+        if (next >= 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            setVisible(false);
+          }, 600);
+        }
+        return next;
+      });
+    }, intervalMs);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          key="cyber-scan-overlay"
+          initial={{ opacity: 1 }}
+          exit={{ opacity: 0, scale: 1.04, filter: 'blur(8px)' }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="fixed inset-0 z-[99999] bg-[#050811] text-slate-100 flex flex-col justify-between p-6 md:p-10 select-none overflow-hidden font-sans"
+        >
+          {/* Cyber Grid Background */}
+          <div className="absolute inset-0 cyber-grid-bg opacity-40 pointer-events-none" />
+
+          {/* Radial Ambient Glow */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-500/10 blur-[120px] rounded-full pointer-events-none" />
+          <div className="absolute top-1/4 left-1/3 w-[400px] h-[400px] bg-cyan-500/10 blur-[100px] rounded-full pointer-events-none" />
+
+          {/* Scanning Vertical Laser Sweep Line */}
+          <div className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#00ffcc] to-transparent shadow-[0_0_20px_#00ffcc,0_0_40px_#00ffcc] pointer-events-none animate-scan-laser" />
+
+          {/* Top Metadata Header */}
+          <div className="relative z-10 flex justify-between items-center text-[10px] md:text-xs font-mono text-cyan-400/70 tracking-widest uppercase">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span>SYS_INIT: ONLINE</span>
+            </div>
+            <div className="hidden sm:block">PORT 443 // TLS 1.3 ENCRYPTED</div>
+            <div>STATUS: {isSecure ? 'VERIFIED' : 'SCANNING'}</div>
+          </div>
+
+          {/* Center Glass Cyber Shield Content */}
+          <div className="relative z-10 my-auto text-center max-w-lg mx-auto w-full">
+            {/* Animated Shield Container */}
+            <div className="relative w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+              {/* Radar Orbit Rings */}
+              <div className="absolute inset-0 rounded-full border border-cyan-500/30 animate-radar-pulse" />
+              <div className="absolute inset-2 rounded-full border border-emerald-500/20 animate-spin" style={{ animationDuration: '10s' }} />
+
+              <div className={`relative w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-2xl border ${
+                isSecure 
+                  ? 'bg-emerald-500/20 border-emerald-400 shadow-[0_0_35px_rgba(16,185,129,0.4)]' 
+                  : 'bg-cyan-500/10 border-cyan-400/40 shadow-[0_0_30px_rgba(6,182,212,0.25)]'
+              }`}>
+                {isSecure ? (
+                  <ShieldCheck className="w-9 h-9 text-emerald-400 animate-bounce" />
+                ) : (
+                  <Shield className="w-8 h-8 text-cyan-400" />
+                )}
+              </div>
+            </div>
+
+            {/* Brand Title */}
+            <h1 className="text-3xl md:text-4xl font-extrabold tracking-widest text-white mb-1 uppercase font-sans">
+              SDS <span className="text-[#ff3347]">KAVACH</span>
+            </h1>
+            <p className="text-[11px] md:text-xs font-mono tracking-[0.25em] text-slate-400 uppercase mb-8">
+              AUTONOMOUS SECURITY DEFENSE SYSTEM
+            </p>
+
+            {/* Dynamic Status Text */}
+            <div className="h-8 flex items-center justify-center mb-4">
+              <div className={`text-xs md:text-sm font-mono tracking-wider font-bold transition-all duration-300 flex items-center gap-2 ${
+                isSecure ? 'text-emerald-400' : 'text-cyan-300'
+              }`}>
+                {isSecure ? <Check className="w-4 h-4 text-emerald-400" /> : <Activity className="w-4 h-4 text-cyan-400 animate-spin" />}
+                <span>{statusText}</span>
+              </div>
+            </div>
+
+            {/* Progress Bar & Counter */}
+            <div className="bg-slate-900/80 border border-slate-800 p-3 rounded-2xl backdrop-blur-md shadow-2xl">
+              <div className="relative h-2.5 bg-slate-950 rounded-full overflow-hidden mb-2.5">
+                <motion.div
+                  className={`h-full rounded-full transition-all duration-75 ${
+                    isSecure 
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-300 shadow-[0_0_15px_#10b981]' 
+                      : 'bg-gradient-to-r from-cyan-500 via-teal-400 to-[#ff3347] shadow-[0_0_15px_#06b6d4]'
+                  }`}
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+
+              <div className="flex justify-between items-center text-[11px] font-mono text-slate-400 px-1">
+                <span>ANALYZING SYSTEM...</span>
+                <span className={`font-bold tracking-wider ${isSecure ? 'text-emerald-400' : 'text-cyan-400'}`}>
+                  [ {progress}% ]
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Technical Metadata */}
+          <div className="relative z-10 flex justify-between items-center text-[10px] md:text-xs font-mono text-slate-500 tracking-wider">
+            <div>[ CHECKSUM: 0x8A79F ]</div>
+            <div className="hidden sm:block">NIST PQC POST-QUANTUM COMPLIANT</div>
+            <div>© 2026 SDS KAVACH</div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 function Footer() {
   return (
     <footer className="w-full max-w-[1120px] mx-auto px-6 py-8 flex flex-wrap gap-6 items-center justify-between border-t border-slate-200/50 text-[#4b5578] text-sm font-semibold shrink-0 mt-auto">
@@ -919,6 +1079,7 @@ function Footer() {
 function AppLayout() {
   return (
     <div className="min-h-screen flex flex-col justify-between relative font-sans">
+      <CyberScanIntro />
       <div className="sky-bg" aria-hidden="true" />
       <div className="grain-overlay" aria-hidden="true" />
       <Navbar />
