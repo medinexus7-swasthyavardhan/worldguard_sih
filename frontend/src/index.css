@@ -27,14 +27,12 @@ body {
   color: var(--red);
 }
 
-/* Warm Light Background Gradient (No harsh blue) */
+/* Global Cybersecurity Background Image */
 .sky-bg {
   position: fixed;
   inset: 0;
   z-index: -2;
-  background: radial-gradient(ellipse 130% 80% at 50% -10%, rgba(255,242,232,0.8) 0%, transparent 60%),
-              radial-gradient(ellipse 80% 60% at 85% 15%, rgba(219,234,254,0.4) 0%, transparent 50%),
-              linear-gradient(180deg, #fafbff 0%, #f1f5f9 50%, #f8fafc 100%);
+  background: url('/bg-global.png') center center / cover no-repeat fixed;
 }
 
 /* Subtle Grain Overlay */
